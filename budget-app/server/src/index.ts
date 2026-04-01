@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { authRouter } from './routes/auth';
 import { plaidRouter } from './routes/plaid';
+import { saltEdgeRouter } from './routes/saltEdge';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(express.json());
 
 app.use('/auth', authRouter);
 app.use('/plaid', plaidRouter);
+app.use('/salt-edge', saltEdgeRouter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });

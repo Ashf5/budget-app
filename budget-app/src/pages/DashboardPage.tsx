@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [linkToken, setLinkToken] = useState<string | null>(null)
   const [isLinkLoading, setIsLinkLoading] = useState(false)
+  const [isSaltEdgeLoading, setIsSaltEdgeLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -107,6 +108,64 @@ export default function DashboardPage() {
     }
   }
 
+  const completeSaltEdgeConnection = useCallback(async (connectionId: string) => {
+    try {
+      await api.post('/salt-edge/complete', { connection_id: connectionId })
+      setIsSyncing(true)
+      await api.post('/salt-edge/sync', {})
+      await fetchData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to connect Israeli bank')
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [fetchData])
+
+  // Handle redirect fallback: Salt Edge appends ?connection_id=... to the returnTo URL.
+  // Normally the popup flow reads this from the parent window, but if popups are
+  // blocked the user lands here via full redirect and we process it on mount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const connectionId = params.get('connection_id')
+    if (connectionId) {
+      window.history.replaceState({}, '', '/dashboard')
+      void completeSaltEdgeConnection(connectionId)
+    }
+  }, [completeSaltEdgeConnection])
+
+  const openSaltEdgeWidget = async () => {
+    setIsSaltEdgeLoading(true)
+    try {
+      const { connect_url } = await api.post<{ connect_url: string }>(
+        '/salt-edge/create-session',
+        {},
+      )
+      const popup = window.open(connect_url, 'saltedge_connect', 'width=500,height=700,left=400,top=100')
+
+      // Poll every 500ms for the popup to close, then read the connection_id
+      // that Salt Edge appended to our returnTo URL (now in the popup's location).
+      const poll = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(poll)
+          setIsSaltEdgeLoading(false)
+          try {
+            const params = new URLSearchParams(popup.location?.search ?? '')
+            const connectionId = params.get('connection_id')
+            if (connectionId) {
+              void completeSaltEdgeConnection(connectionId)
+            }
+          } catch {
+            // Cross-origin access to popup.location throws before redirect completes;
+            // the redirect fallback useEffect above will handle it instead.
+          }
+        }
+      }, 500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start Israeli bank connection')
+      setIsSaltEdgeLoading(false)
+    }
+  }
+
   const totalBalance = accounts.reduce(
     (sum, a) => sum + (a.balance_current ?? 0),
     0,
@@ -163,6 +222,15 @@ export default function DashboardPage() {
                          disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLinkLoading ? 'Loading…' : '+ Connect Bank'}
+            </button>
+            <button
+              onClick={openSaltEdgeWidget}
+              disabled={isSaltEdgeLoading || isSyncing}
+              className="text-sm px-3.5 py-1.5 bg-blue-600 text-white rounded-lg
+                         hover:bg-blue-700 active:bg-blue-800
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSaltEdgeLoading ? 'Loading…' : '+ Israeli Bank'}
             </button>
             <button
               onClick={logout}
@@ -247,14 +315,24 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-gray-700 mb-1">No accounts connected</p>
               <p className="text-sm text-gray-400 mb-5">Link a bank account to see your balances and transactions.</p>
-              <button
-                onClick={openPlaidLink}
-                disabled={isLinkLoading}
-                className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg
-                           hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {isLinkLoading ? 'Loading…' : 'Connect your bank'}
-              </button>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={openPlaidLink}
+                  disabled={isLinkLoading}
+                  className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg
+                             hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  {isLinkLoading ? 'Loading…' : 'Connect US bank'}
+                </button>
+                <button
+                  onClick={openSaltEdgeWidget}
+                  disabled={isSaltEdgeLoading}
+                  className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg
+                             hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {isSaltEdgeLoading ? 'Loading…' : 'Connect Israeli bank'}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

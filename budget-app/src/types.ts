@@ -5,6 +5,8 @@ export interface Account {
   currency: string
   balance_current: number | null
   balance_available: number | null
+  source?: 'plaid' | 'salt_edge'
+  institution_name?: string | null
 }
 
 export interface Transaction {

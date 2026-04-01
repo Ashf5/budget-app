@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.saltedge.com)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}
