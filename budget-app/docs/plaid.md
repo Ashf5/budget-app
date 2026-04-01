@@ -86,6 +86,7 @@ Returns paginated transactions for the authenticated user, sorted newest first.
 **Query params:**
 - `limit` — number of transactions to return (default: 50, max: 200)
 - `offset` — number of transactions to skip (default: 0)
+- `startDate` *(optional)* — ISO date string `YYYY-MM-DD`; when provided, only returns transactions on or after this date. Used by the dashboard to fetch current-month transactions for analytics.
 
 **Response:**
 ```json
