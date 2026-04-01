@@ -5,11 +5,20 @@ interface Props {
 }
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+  // Plaid types
   depository: 'Bank',
   credit: 'Credit',
   investment: 'Investment',
   loan: 'Loan',
   other: 'Other',
+  // Salt Edge natures
+  account: 'Bank',
+  card: 'Credit Card',
+  savings: 'Savings',
+  checking: 'Checking',
+  bonus: 'Bonus',
+  insurance: 'Insurance',
+  ewallet: 'e-Wallet',
 }
 
 export default function AccountCard({ account }: Props) {
@@ -29,6 +38,9 @@ export default function AccountCard({ account }: Props) {
             {ACCOUNT_TYPE_LABELS[account.type] ?? account.type}
           </p>
           <p className="text-sm font-medium text-gray-800">{account.name}</p>
+          {account.source === 'salt_edge' && (
+            <p className="text-xs text-blue-500 font-medium mt-0.5">Israeli Bank</p>
+          )}
         </div>
         <span className="text-xs text-gray-400 font-mono uppercase">{account.currency}</span>
       </div>
