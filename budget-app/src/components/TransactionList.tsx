@@ -1,27 +1,9 @@
 import type { Transaction } from '../types'
+import { CATEGORY_LABELS } from '../lib/analytics'
 
 interface Props {
   transactions: Transaction[]
   isLoading: boolean
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  FOOD_AND_DRINK: 'Food & Drink',
-  TRAVEL: 'Travel',
-  TRANSFER_IN: 'Transfer In',
-  TRANSFER_OUT: 'Transfer Out',
-  INCOME: 'Income',
-  LOAN_PAYMENTS: 'Loan Payment',
-  BANK_FEES: 'Bank Fees',
-  ENTERTAINMENT: 'Entertainment',
-  GENERAL_MERCHANDISE: 'Shopping',
-  HOME_IMPROVEMENT: 'Home',
-  MEDICAL: 'Medical',
-  PERSONAL_CARE: 'Personal Care',
-  GENERAL_SERVICES: 'Services',
-  GOVERNMENT_AND_NON_PROFIT: 'Government',
-  UTILITIES: 'Utilities',
-  RENT_AND_UTILITIES: 'Rent & Utilities',
 }
 
 function formatDate(dateStr: string) {

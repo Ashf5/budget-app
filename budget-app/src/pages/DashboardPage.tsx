@@ -1,16 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
+import {
+  getMonthStart,
+  sumIncome,
+  sumExpenses,
+  topExpenseCategories,
+} from '../lib/analytics'
 import AccountCard from '../components/AccountCard'
 import TransactionList from '../components/TransactionList'
+import CashFlowBar from '../components/CashFlowBar'
+import TopExpenses from '../components/TopExpenses'
 import type { Account, Transaction } from '../types'
 
 export default function DashboardPage() {
   const { logout } = useAuth()
 
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
+  const [monthlyTransactions, setMonthlyTransactions] = useState<Transaction[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [linkToken, setLinkToken] = useState<string | null>(null)
   const [isLinkLoading, setIsLinkLoading] = useState(false)
@@ -19,13 +28,18 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     setIsLoadingData(true)
+    const monthStart = getMonthStart()
     try {
-      const [accts, txns] = await Promise.all([
+      const [accts, recent, monthly] = await Promise.all([
         api.get<Account[]>('/plaid/accounts'),
-        api.get<Transaction[]>('/plaid/transactions?limit=50&offset=0'),
+        api.get<Transaction[]>('/plaid/transactions?limit=10&offset=0'),
+        api.get<Transaction[]>(
+          `/plaid/transactions?limit=200&offset=0&startDate=${monthStart}`,
+        ),
       ])
       setAccounts(accts)
-      setTransactions(txns)
+      setRecentTransactions(recent)
+      setMonthlyTransactions(monthly)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
@@ -98,6 +112,17 @@ export default function DashboardPage() {
     0,
   )
 
+  const income = useMemo(() => sumIncome(monthlyTransactions), [monthlyTransactions])
+  const expenses = useMemo(() => sumExpenses(monthlyTransactions), [monthlyTransactions])
+  const topCategories = useMemo(
+    () => topExpenseCategories(monthlyTransactions),
+    [monthlyTransactions],
+  )
+  const monthLabel = new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top nav */}
@@ -165,7 +190,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Summary card */}
+        {/* Total balance summary card */}
         {accounts.length > 0 && !isLoadingData && (
           <div className="bg-indigo-600 rounded-2xl p-6 text-white">
             <p className="text-sm font-medium text-indigo-200 mb-1">Total Balance</p>
@@ -176,6 +201,27 @@ export default function DashboardPage() {
               {accounts.length} account{accounts.length !== 1 ? 's' : ''} connected
             </p>
           </div>
+        )}
+
+        {/* This Month: Cash flow + Top expenses */}
+        {(accounts.length > 0 || isLoadingData) && (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              This Month
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CashFlowBar
+                income={income}
+                expenses={expenses}
+                isLoading={isLoadingData}
+                month={monthLabel}
+              />
+              <TopExpenses
+                groups={topCategories}
+                isLoading={isLoadingData}
+              />
+            </div>
+          </section>
         )}
 
         {/* Accounts */}
@@ -219,14 +265,14 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Transactions */}
-        {(accounts.length > 0 || transactions.length > 0) && (
+        {/* Recent Activity */}
+        {(accounts.length > 0 || recentTransactions.length > 0) && (
           <section>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Recent Transactions
+              Recent Activity
             </h2>
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4">
-              <TransactionList transactions={transactions} isLoading={isLoadingData} />
+              <TransactionList transactions={recentTransactions} isLoading={isLoadingData} />
             </div>
           </section>
         )}

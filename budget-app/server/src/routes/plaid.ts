@@ -186,14 +186,25 @@ plaidRouter.get('/accounts', verifyToken, async (req: AuthRequest, res: Response
 plaidRouter.get('/transactions', verifyToken, async (req: AuthRequest, res: Response): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
+  const startDate = req.query.startDate as string | undefined;
+
+  if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+    res.status(400).json({ error: 'startDate must be YYYY-MM-DD' });
+    return;
+  }
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('transactions')
       .select('*')
       .eq('user_id', req.user!.id)
-      .order('date', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('date', { ascending: false });
+
+    if (startDate) {
+      query = query.gte('date', startDate);
+    }
+
+    const { data, error } = await query.range(offset, offset + limit - 1);
 
     if (error) {
       res.status(500).json({ error: 'Failed to fetch transactions' });
